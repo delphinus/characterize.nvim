@@ -65,8 +65,7 @@ function M.info(chars)
     if nr < 256 then
       result = result..(', \\%03o'):format(nr)
     end
-    result = result..(', U+%04X'):format(nr)
-    result = result..' '..M.description(nr, '<unknown>')
+    result = result..(', U+%04X %s'):format(nr, M.description(nr, '<unknown>'))
     for _, d in ipairs(M.digraphs(nr)) do
       result = result..', \\<C-K>'..d
     end
