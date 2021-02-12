@@ -60,7 +60,7 @@ function M.info(chars)
     end
     local nr_char = vim.fn.nr2char(nr)
     local char = nr < 32 and '^'..vim.fn.nr2char(64 + nr) or nr_char
-    c = vim.fn.strpart(c, nr and nr_char:len() or 1)
+    c = vim.fn.strpart(c, nr == 0 and 1 or nr_char:len())
     local result = '<'..char..'> '..nr
     if nr < 256 then
       result = result..(', \\%03o'):format(nr)
