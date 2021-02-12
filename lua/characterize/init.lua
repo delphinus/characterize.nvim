@@ -47,13 +47,13 @@ local _r = string.char(13)
 function M.info(chars)
   if not chars or chars:len() == 0 then return 'NUL' end
   local results = {}
-  local fileformat = vim.bo.fileformat
+  local is_old_mac = vim.bo.fileformat == 'mac'
   local c = chars
   while c:len() > 0 do
     local nr
     if c == _n then
       nr = 0
-    elseif c == _r and fileformat == 'mac' then
+    elseif c == _r and is_old_mac then
       nr = 10
     else
       nr = vim.fn.char2nr(c)
