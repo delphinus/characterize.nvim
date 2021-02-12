@@ -44,7 +44,12 @@ end
 
 local _n = string.char(10)
 local _r = string.char(13)
-function M.info(chars)
+function M.info(chars, opts)
+  opts = vim.tbl_extend('force', {
+    digraphs = true,
+    emojis = true,
+    html_entity = true,
+  }, opts or {})
   if not chars or chars:len() == 0 then return 'NUL' end
   local results = {}
   local is_old_mac = vim.bo.fileformat == 'mac'
@@ -66,23 +71,60 @@ function M.info(chars)
       result = result..(', \\%03o'):format(nr)
     end
     result = result..(', U+%04X %s'):format(nr, M.description(nr, '<unknown>'))
-    for _, d in ipairs(M.digraphs(nr)) do
-      result = result..', \\<C-K>'..d
+    if opts.digraphs then
+      for _, d in ipairs(M.digraphs(nr)) do
+        result = result..', \\<C-K>'..d
+      end
     end
-    for _, e in ipairs(M.emojis(nr)) do
-      result = result..', '..e
+    if opts.emojis then
+      for _, e in ipairs(M.emojis(nr)) do
+        result = result..', '..e
+      end
     end
-    local entity = M.html_entity(nr)
-    if entity:len() > 0 then
-      result = result..', '..entity
+    if opts.html_entity then
+      local entity = M.html_entity(nr)
+      if entity:len() > 0 then
+        result = result..', '..entity
+      end
     end
     table.insert(results, result)
   end
   return table.concat(results, ' ')
 end
 
-function M.setup(opts)
+function M.cursor_info(opts)
+  local line = vim.api.nvim_get_current_line()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  -- TODO: use api-fast way?
+  local char = vim.fn.matchstr(line:sub(cursor[2] + 1), '.')
+  return M.info(char, opts)
+end
 
+local mapped_key
+function M.setup(opts)
+  opts = vim.tbl_extend('force', {
+    map_key = 'ga',
+    digraphs = true,
+    emojis = true,
+    html_entity = true,
+  }, opts or {})
+
+  if mapped_key then
+    vim.api.nvim_del_keymap('n', mapped_key)
+  end
+  if opts.map_key and opts.map_key:len() then
+    function _G.__characterize_cursor_info()
+      -- TODO: Use floating windows
+      print(M.cursor_info(opts))
+    end
+    mapped_key = opts.map_key
+    vim.api.nvim_set_keymap(
+      'n',
+      mapped_key,
+      '<Cmd>lua _G.__characterize_cursor_info()<CR>',
+      {noremap = true}
+    )
+  end
 end
 
 return M
