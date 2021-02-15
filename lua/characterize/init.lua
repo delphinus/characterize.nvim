@@ -42,15 +42,37 @@ function M.description(nr, default)
   return desc.chars[nr] or default or ''
 end
 
+function M.info(chars)
+  local results = M.info_table(chars)
+  if #results == 0 then return 'NUL' end
+  return table.concat(
+    vim.tbl_map(function(r)
+      local text = '<'..r.char..'>'..r.nr
+      if r.nr < 256 then
+        text = text..(', \\%03o'):format(r.nr)
+      end
+      text = text..', '..r.codepoint..' '..r.description
+      for _, d in ipairs(r.digraphs) do
+        text = text..', \\<C-K>'..d
+      end
+      for _, e in ipairs(r.emojis) do
+        text = text..', '..e
+      end
+      if r.html_entity:len() > 0 then
+        text = text..', '..r.html_entity
+      end
+      return text
+    end, results),
+    ' '
+  )
+end
+
 local _n = string.char(10)
 local _r = string.char(13)
-function M.info(chars, opts)
-  opts = vim.tbl_extend('force', {
-    digraphs = true,
-    emojis = true,
-    html_entity = true,
-  }, opts or {})
-  if not chars or chars:len() == 0 then return 'NUL' end
+function M.info_table(chars)
+  if not chars or type(chars) ~= 'string' or chars:len() == 0 then
+    return {}
+  end
   local results = {}
   local is_old_mac = vim.bo.fileformat == 'mac'
   local c = chars
@@ -66,47 +88,34 @@ function M.info(chars, opts)
     local nr_char = vim.fn.nr2char(nr)
     local char = nr < 32 and '^'..vim.fn.nr2char(64 + nr) or nr_char
     c = vim.fn.strpart(c, nr == 0 and 1 or nr_char:len())
-    local result = '<'..char..'> '..nr
-    if nr < 256 then
-      result = result..(', \\%03o'):format(nr)
-    end
-    result = result..(', U+%04X %s'):format(nr, M.description(nr, '<unknown>'))
-    if opts.digraphs then
-      for _, d in ipairs(M.digraphs(nr)) do
-        result = result..', \\<C-K>'..d
-      end
-    end
-    if opts.emojis then
-      for _, e in ipairs(M.emojis(nr)) do
-        result = result..', '..e
-      end
-    end
-    if opts.html_entity then
-      local entity = M.html_entity(nr)
-      if entity:len() > 0 then
-        result = result..', '..entity
-      end
-    end
-    table.insert(results, result)
+    table.insert(results, {
+      char = char,
+      nr = nr,
+      codepoint = ('U+%04X'):format(nr),
+      description = M.description(nr, '<unknown>'),
+      digraphs = M.digraphs(nr),
+      emojis = M.emojis(nr),
+      html_entity = M.html_entity(nr)
+    })
   end
-  return table.concat(results, ' ')
+  return results
 end
 
-function M.cursor_info(opts)
+function M.cursor_char()
   local line = vim.api.nvim_get_current_line()
   local cursor = vim.api.nvim_win_get_cursor(0)
   -- TODO: use api-fast way?
-  local char = vim.fn.matchstr(line:sub(cursor[2] + 1), '.')
-  return M.info(char, opts)
+  return vim.fn.matchstr(line:sub(cursor[2] + 1), '.')
+end
+
+function M.cursor_info()
+  return M.info(M.cursor_char())
 end
 
 local mapped_key
 function M.setup(opts)
   opts = vim.tbl_extend('force', {
     map_key = 'ga',
-    digraphs = true,
-    emojis = true,
-    html_entity = true,
   }, opts or {})
 
   if mapped_key then
@@ -115,7 +124,7 @@ function M.setup(opts)
   if opts.map_key and opts.map_key:len() then
     function _G.__characterize_cursor_info()
       -- TODO: Use floating windows
-      print(M.cursor_info(opts))
+      print(M.cursor_info())
     end
     mapped_key = opts.map_key
     vim.api.nvim_set_keymap(
