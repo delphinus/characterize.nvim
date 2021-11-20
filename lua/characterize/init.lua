@@ -88,11 +88,17 @@ function M.info_table(chars)
     local nr_char = vim.fn.nr2char(nr)
     local char = nr < 32 and '^'..vim.fn.nr2char(64 + nr) or nr_char
     c = vim.fn.strpart(c, nr == 0 and 1 or nr_char:len())
+    local description = M.description(nr, '<unknown>')
+    local shikakugoma
+    if description:match('^<CJK Ideograph') then
+      shikakugoma = require'characterize.shikakugoma'[char]
+    end
     table.insert(results, {
       char = char,
       nr = nr,
       codepoint = ('U+%04X'):format(nr),
       description = M.description(nr, '<unknown>'),
+      shikakugoma = shikakugoma,
       digraphs = M.digraphs(nr),
       emojis = M.emojis(nr),
       html_entity = M.html_entity(nr)

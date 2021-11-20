@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use feature qw(say);
+use Encode;
+
+say '-- This file is generated from SKK_JISYO.shikakugoma from the repo below.';
+say '-- https://github.com/KeenS/SKK_JISYO.wiktionary';
+say '-- Copyright © 2021 κeen';
+say 'return {';
+while (<>) {
+    $_ = decode(utf8 => $_);
+    if (m{^(\d+)\s/(.)/}) {
+        say encode(utf8 => "  ['$2'] = '$1',");
+    }
+}
+say '}'
